@@ -30,11 +30,25 @@ def data_analysis(df):
     print(corr.to_string())
     print()
 
-    corr_dict = to_dict(df)
+    corr_dict = sort_corr_dict(df)
     print("Highest correlated are:")
+    for i in range(5):
+        print(str(i) + ". (" + corr_dict[i][1][0] + ", " +
+              corr_dict[i][1][1] + ") with %.6f" % corr_dict[i][0])
 
     print()
     print("Lowest correlated are:")
+    for i in range(5):
+        print(str(i) + ". (" + corr_dict[-i][1][0] + ", " +
+              corr_dict[-i][1][1] + ") with %.6f" % corr_dict[-i][0])
+
+    df_season = df.groupby(['season_name']).mean()
+    print("fall average t_diff is %.2f" % df_season['fall']['t_diff'])
+    print("spring average t_diff is %.2f" % df_season['spring']['t_diff'])
+    print("summer average t_diff is %.2f" % df_season['summer']['t_diff'])
+    print("winter average t_diff is %.2f" % df_season['winter']['t_diff'])
+    all_seasons = df['t_diff'].mean()
+    print("All average t_diff is %.2f" % all_seasons)
 
 
 def to_dict(df):
@@ -45,8 +59,34 @@ def to_dict(df):
     return corr_dict
 
 
-def sort_corr_dict(corr_dict):
+def sort_corr_dict(df):
+    corr_dict = to_dict(df)
+    count = [[]]
+    i = 0
+    for key in df.keys():
+        count[i][0] = key
+        count[i][1] = 0
+        i += 1
 
+    corr_vals = []
+    j = 0
+    for key, value in corr_dict.items():
+        if key[0] == key[1]:
+            continue
+        k1 = find_feat_in_count(count, key[0])
+        k2 = find_feat_in_count(count, key[1])
+        if count[k1][1] == len(df.keys())-1 or count[k2][1] == len(df.keys())-1:
+            continue
+        corr_vals[j] = (value, key)
+        j += 1
+
+    return sorted(corr_vals)
+
+
+def find_feat_in_count(count, feat):
+    for i in range(len(count)):
+        if count[i][0] == feat:
+            return i
 
 def convert_to_season(season_num):
     seasons = ["spring", "summer", "fall", "winter"]
