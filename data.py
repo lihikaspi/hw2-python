@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from datetime import datetime
 
@@ -15,8 +16,8 @@ def add_new_columns(df):
     new_df['day'] = df['timestamp'].apply(find_day)
     new_df['month'] = df['timestamp'].apply(find_month)
     new_df['year'] = df['timestamp'].apply(find_year)
-    new_df['is_weekend_holiday'] = df['is_holiday', 'is_weekend'].apply(is_weekend_holiday)
-    new_df['t_diff'] = df['t1', 't2'].apply(lambda t1, t2: t2 - t1)
+    new_df['is_weekend_holiday'] = df.apply(lambda feat: is_weekend_holiday(feat.is_holiday, feat.is_weekend), axis = 1)
+    new_df['t_diff'] = df.apply(lambda t: t.t2 - t.t1, axis = 1)
     return new_df
 
 
@@ -30,63 +31,67 @@ def data_analysis(df):
     print(corr.to_string())
     print()
 
-    corr_dict = sort_corr_dict(df)
+    corr_dict = sort_corr_dict(corr)
     print("Highest correlated are:")
-    for i in range(5):
-        print(str(i) + ". (" + corr_dict[i][1][0] + ", " +
-              corr_dict[i][1][1] + ") with %.6f" % corr_dict[i][0])
+    for i in range(1, 6):
+        print(str(i) + ". " + str(corr_dict[-i][1]) + " with %.6f" % corr_dict[-i][0])
 
     print()
     print("Lowest correlated are:")
     for i in range(5):
-        print(str(i) + ". (" + corr_dict[-i][1][0] + ", " +
-              corr_dict[-i][1][1] + ") with %.6f" % corr_dict[-i][0])
+        print(str(i+1) + ". " + str(corr_dict[i][1]) + " with %.6f" % corr_dict[i][0])
 
     df_season = df.groupby(['season_name']).mean()
-    print("fall average t_diff is %.2f" % df_season['fall']['t_diff'])
-    print("spring average t_diff is %.2f" % df_season['spring']['t_diff'])
-    print("summer average t_diff is %.2f" % df_season['summer']['t_diff'])
-    print("winter average t_diff is %.2f" % df_season['winter']['t_diff'])
+
+    fall_mean = filter_season(df, 2)['t_diff'].mean()
+    spring_mean = filter_season(df, 0)['t_diff'].mean()
+    summer_mean = filter_season(df, 1)['t_diff'].mean()
+    winter_mean = filter_season(df, 3)['t_diff'].mean()
+    print()
+    print("fall average t_diff is %.2f" % fall_mean)
+    print("spring average t_diff is %.2f" % spring_mean)
+    print("summer average t_diff is %.2f" % summer_mean)
+    print("winter average t_diff is %.2f" % winter_mean)
     all_seasons = df['t_diff'].mean()
     print("All average t_diff is %.2f" % all_seasons)
 
 
-def to_dict(df):
+def filter_season(df, szn_num):
+    new_df = df[df['season'] == szn_num]
+    return new_df
+
+def to_dict(corr):
     corr_dict = {}
-    for feat1 in df.keys():
-        for feat2 in df.keys():
-            corr_dict[(feat1, feat2)] = df[feat1].corr(df[feat2])
+    for feat1 in corr.keys():
+        for feat2 in corr.keys():
+            corr_dict[(feat1, feat2)] = absolute(corr[feat1][feat2])
     return corr_dict
 
 
-def sort_corr_dict(df):
-    corr_dict = to_dict(df)
-    count = [[]]
-    i = 0
-    for key in df.keys():
-        count[i][0] = key
-        count[i][1] = 0
-        i += 1
+def absolute(corr):
+    if corr < 0:
+        return -corr
+    return corr
 
-    corr_vals = []
-    j = 0
-    for key, value in corr_dict.items():
-        if key[0] == key[1]:
+def sort_corr_dict(corr):
+    corr_dict = to_dict(corr)
+    values = []
+    for key in corr_dict.keys():
+        values.append((corr_dict[key], key))
+
+    sorted_corr_doubles = sorted(values, key=lambda tup: tup[0])
+    sorted_corr = []
+    for i in range(len(values)):
+        if sorted_corr_doubles[i][0] == 1:
             continue
-        k1 = find_feat_in_count(count, key[0])
-        k2 = find_feat_in_count(count, key[1])
-        if count[k1][1] == len(df.keys())-1 or count[k2][1] == len(df.keys())-1:
-            continue
-        corr_vals[j] = (value, key)
-        j += 1
+        if sorted_corr_doubles[i][0] == sorted_corr_doubles[i+1][0] \
+                and sorted_corr_doubles[i][1][0] == sorted_corr_doubles[i+1][1][1] \
+                and sorted_corr_doubles[i][1][1] == sorted_corr_doubles[i+1][1][0]:
+            sorted_corr.append(sorted_corr_doubles[i])
+            i += 1
 
-    return sorted(corr_vals)
+    return sorted_corr
 
-
-def find_feat_in_count(count, feat):
-    for i in range(len(count)):
-        if count[i][0] == feat:
-            return i
 
 def convert_to_season(season_num):
     seasons = ["spring", "summer", "fall", "winter"]
@@ -104,7 +109,7 @@ def find_time_of_day(timestamp):
 def get_time(timestamp):
     time_of_day = find_time_of_day(timestamp)
     if time_of_day == 24:
-        return datetime.strptime(timestamp, '%d/%m/%y  %H:%M:%S.%f')
+        return datetime.strptime(timestamp, '%d/%m/%Y %H:%M')  #:%S.%f
 
     if time_of_day == 121 or time_of_day == 122:
         return datetime.strptime(timestamp, '%d/%m/%y  %I:%M:%S.%f %p')
@@ -135,6 +140,8 @@ def find_year(timestamp):
 
 
 def is_weekend_holiday(holiday, weekend):
+    #holiday = holiday_weekend[0]
+    #weekend = holiday_weekend[1]
     if holiday == 0 and weekend == 0:
         return 0
     if holiday == 0 and weekend == 1:

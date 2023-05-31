@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -35,21 +37,22 @@ def transform_data(df, features):
     :param features: list of 2 features from the dataframe
     :return: transformed data as numpy array of shape (n, 2)
     """
-
     hum = df[features[0]]
     cnt = df[features[1]]
     data = np.array([hum, cnt], dtype=float).T
 
     sum_hum = 0
     sum_cnt = 0
-    for hum in data[0]:
-        sum_hum += hum
-    for cnt in data[1]:
-        sum_cnt += cnt
+    for hum1 in data[0]:
+        sum_hum += hum1
+    for cnt1 in data[1]:
+        sum_cnt += cnt1
 
-    for i in range(data):
-        data[i][0] = (data[i][0] - min(hum))/sum_hum
-        data[i][1] = (data[i][1] - min(cnt))/sum_cnt
+    min_hum = min(hum)
+    min_cnt = min(cnt)
+    for i in range(len(data)):
+        data[i][0] = (data[i][0] - min_hum) / sum_hum
+        data[i][1] = (data[i][1] - min_cnt) / sum_cnt
 
     return add_noise(data)
 
@@ -64,10 +67,10 @@ def kmeans(data, k):
     * centroids - numpy array of shape (k, 2), centroid for each cluster.
     """
     prev_centroids = choose_initial_centroids(data, k)
-    labels = np.array(np.zeros(shape=(data)), dtype=float)
+    labels = np.zeros(shape=len(data), dtype=int)
 
     while True:
-        for i in range(data):
+        for i in range(len(data)):
             labels[i] = find_closest_centroid(prev_centroids, data[i])
 
         current_centroids = recompute_centroids(labels, data, k)
@@ -85,15 +88,15 @@ def find_closest_centroid(centroids, point):
     :param point:
     :return:
     """
-    distances = np.array(np.zeros(shape=(centroids)), dtype=float)
-    for i in range(centroids):
+    distances = np.array(np.zeros(shape=len(centroids)), dtype=float)
+    for i in range(len(centroids)):
         distances[i] = dist(centroids[i], point)
 
-    min = 2
-    index = 0
-    for i in range(distances):
-        if distances[i] < min:
-            min = distances[i]
+    min_dist = sys.maxsize
+    index = -1
+    for i in range(len(distances)):
+        if distances[i] < min_dist:
+            min_dist = distances[i]
             index = i
     return index
 
@@ -136,7 +139,7 @@ def find_cluster_i(data, cluster_i):
 
 def find_clusters(k, labels, length):
     clusters = np.zeros(shape=(k, length), dtype=int)
-    count = np.zeros(shape=(k), dtype=int)
+    count = np.zeros(shape=k, dtype=int)
     for i in range(length):
         clusters[labels[i]][count[labels[i]]] = i
         count[labels[i]] += 1
@@ -149,10 +152,10 @@ def dist(x, y):
     Euclidean distance between vectors x, y
     :param x: numpy array of size n
     :param y: numpy array of size n
-    :return: the euclidean distance
+    :return: the Euclidean distance
     """
-    sum = np.array(np.zeros(shape=(x)), dtype=float)
-    for i in range(x):
+    sum = np.array(np.zeros(shape=len(x)), dtype=float)
+    for i in range(len(x)):
         sum[i] = (x[i] - y[i]) ** 2
 
     return np.sqrt(np.array([np.sum(sum)], dtype=float))
@@ -178,17 +181,17 @@ def recompute_centroids(data, labels, k):
     :return: numpy array of shape (k, 2)
     """
     centroids = np.array(np.zeros(shape=(k, 2)), dtype=float)
-    count = np.array(np.zeros(shape=(k)), dtype=int)
-    sum = np.array(np.zeros(shape=(k, 2)), dtype=float)
+    count = np.zeros(shape=k, dtype=int)
+    sum_points = np.zeros(shape=(k, 2), dtype=float)
 
-    for i in range(data):
+    for i in range(len(data)):
         count[labels[i]] += 1
-        sum[labels[i]][0] += data[i][0]
-        sum[labels[i]][1] += data[i][1]
+        sum_points[labels[i]][0] += data[i][0]
+        sum_points[labels[i]][1] += data[i][1]
 
     for i in range(k):
-        centroids[i][0] = sum[i][0] / count[i]
-        centroids[i][1] = sum[i][1] / count[i]
+        centroids[i][0] = sum_points[i][0] / count[i]
+        centroids[i][1] = sum_points[i][1] / count[i]
 
     return centroids
 
